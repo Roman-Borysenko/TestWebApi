@@ -23,13 +23,22 @@ namespace WebApi.Controllers
             return await Context.Categories.ToListAsync();
         }
         [HttpGet("{id}")]
-        public async Task<Category> GetOne(int id)
+        public async Task<IActionResult> GetOne(int id)
         {
-            return await Context.Categories.SingleOrDefaultAsync(c => c.Id == id);
+            var category = await Context.Categories.SingleOrDefaultAsync(c => c.Id == id);
+            if(category == null)
+            {
+                return NotFound();
+            }
+            return Ok(category);
         }
         [HttpPost("range")]
-        public async Task<int> AddRange(List<ViewModels.Category> categories)
+        public async Task<IActionResult> AddRange(List<ViewModels.Category> categories)
         {
+            if(!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
             var mapped = new Mapper(new MapperConfiguration(cfg => cfg.CreateMap<ViewModels.Category, Category>()
                 .ForMember("Slug", opt => opt.MapFrom(src => src.Name.GenerateSlug("-")))
             ));
@@ -38,11 +47,15 @@ namespace WebApi.Controllers
             await Context.Categories.AddRangeAsync(entities);
             await Context.SaveChangesAsync();
 
-            return categories.Count;
+            return Ok();
         }
         [HttpPost]
-        public async Task<bool> Add(ViewModels.Category category)
+        public async Task<IActionResult> Add(ViewModels.Category category)
         {
+            if(!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
             var mapped = new Mapper(new MapperConfiguration(cfg => cfg.CreateMap<ViewModels.Category, Category>()
                 .ForMember("Slug", opt => opt.MapFrom(src => src.Name.GenerateSlug("-")))
             ));
@@ -51,12 +64,23 @@ namespace WebApi.Controllers
             await Context.Categories.AddAsync(entity);
             await Context.SaveChangesAsync();
 
-            return true;
+            return Ok();
         }
         [HttpPut]
-        public async Task<bool> Edit(ViewModels.Category category)
+        public async Task<IActionResult> Edit(ViewModels.Category category)
         {
             var entity = await Context.Categories.SingleOrDefaultAsync(c => c.Id == category.Id);
+
+            if(entity == null)
+            {
+                ModelState.AddModelError("Id", "The record id is missing or was entered incorrectly.");
+            }
+
+            if(!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             new Mapper(new MapperConfiguration(cfg => cfg.CreateMap<ViewModels.Category, Category>()
                 .ForMember("Slug", opt => opt.MapFrom(src => src.Name.GenerateSlug("-")))
             )).Map<ViewModels.Category, Category>(category, entity);
@@ -64,15 +88,25 @@ namespace WebApi.Controllers
             Context.Update(entity);
             await Context.SaveChangesAsync();
 
-            return true;
+            return Ok();
         }
         [HttpDelete("{id}")]
-        public async Task<bool> Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            Context.Categories.Remove(await Context.Categories.SingleOrDefaultAsync(c => c.Id == id));
+            var category = await Context.Categories.SingleOrDefaultAsync(c => c.Id == id);
+            if (category == null)
+            {
+                ModelState.AddModelError("Id", "The record id is missing or was entered incorrectly.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            Context.Categories.Remove(category);
             await Context.SaveChangesAsync();
 
-            return true;
+            return Ok();
         }
     }
 }

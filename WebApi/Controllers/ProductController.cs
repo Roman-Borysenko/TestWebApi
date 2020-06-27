@@ -24,18 +24,31 @@ namespace WebApi.Controllers
             return await Context.Products.Include(p => p.Category).ToListAsync();
         }
         [HttpGet("{id}")]
-        public async Task<Product> GetProduct(int id)
+        public async Task<ActionResult<Product>> GetProduct(int id)
         {
-            return await Context.Products.Include(p => p.Category).SingleOrDefaultAsync(p => p.Id == id);
+            var product = await Context.Products.Include(p => p.Category).SingleOrDefaultAsync(p => p.Id == id);
+            if(product == null)
+            {
+                return NotFound();
+            }
+            return Ok(product);
         }
         [HttpGet("category/{id}")]
-        public async Task<List<Product>> GetProductsByCategory(int id)
+        public async Task<ActionResult<List<Product>>> GetProductsByCategory(int id)
         {
-            return await Context.Products.Where(p => p.CategoryId == id).ToListAsync();
+            var products = await Context.Products.Where(p => p.CategoryId == id).ToListAsync();
+            if(products == null || products.Count == 0)
+            {
+                return NotFound();
+            }
+            return Ok(products);
         }
         [HttpPost("range")]
-        public async Task<int> AddRange(List<ViewModels.Product> products)
+        public async Task<IActionResult> AddRange(List<ViewModels.Product> products)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             var mapped = new Mapper(new MapperConfiguration(cfg => cfg.CreateMap<ViewModels.Product, Product>()
                 .ForMember("Slug", opt => opt.MapFrom(src => src.Name.GenerateSlug("-")))
             ));
@@ -45,11 +58,14 @@ namespace WebApi.Controllers
             await Context.Products.AddRangeAsync(entities);
             await Context.SaveChangesAsync();
 
-            return products.Count;
+            return Ok();
         }
         [HttpPost]
-        public async Task<bool> Add(ViewModels.Product product)
+        public async Task<IActionResult> Add(ViewModels.Product product)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             var mapped = new Mapper(new MapperConfiguration(cfg => cfg.CreateMap<ViewModels.Product, Product>()
                 .ForMember("Slug", opt => opt.MapFrom(src => src.Name.GenerateSlug("-")))
             ));
@@ -59,12 +75,20 @@ namespace WebApi.Controllers
             await Context.Products.AddAsync(entity);
             await Context.SaveChangesAsync();
 
-            return true;
+            return Ok();
         }
         [HttpPut]
-        public async Task<bool> Edit(ViewModels.Product product)
+        public async Task<IActionResult> Edit(ViewModels.Product product)
         {
             var entity = await Context.Products.SingleOrDefaultAsync(p => p.Id == product.Id);
+
+            if(entity == null)
+            {
+                ModelState.AddModelError("Id", "The record id is missing or was entered incorrectly.");
+            }
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
             new Mapper(new MapperConfiguration(cfg => cfg.CreateMap<ViewModels.Product, Product>()
                 .ForMember("Slug", opt => opt.MapFrom(src => src.Name.GenerateSlug("-")))
@@ -73,15 +97,25 @@ namespace WebApi.Controllers
             Context.Update(entity);
             await Context.SaveChangesAsync();
 
-            return true;
+            return Ok();
         }
         [HttpDelete("{id}")]
-        public async Task<bool> Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            Context.Remove(await Context.Products.SingleOrDefaultAsync(p => p.Id == id));
+            var product = await Context.Products.SingleOrDefaultAsync(p => p.Id == id);
+
+            if (product == null)
+            {
+                ModelState.AddModelError("Id", "The record id is missing or was entered incorrectly.");
+            }
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            Context.Remove(product);
             await Context.SaveChangesAsync();
 
-            return true;
+            return Ok();
         }
     }
 }
