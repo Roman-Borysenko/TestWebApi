@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Newtonsoft.Json;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace WebApi.Models
@@ -10,7 +11,7 @@ namespace WebApi.Models
         public  string Name { get; set; }
         [Required, StringLength(50, MinimumLength = 2)]
         public string Slug { get; set; }
-        [Required]
+        [Required, JsonIgnore]
         public List<Product> Products { get; set; }
     }
 }
