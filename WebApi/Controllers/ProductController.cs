@@ -5,6 +5,7 @@ using SlugGenerator;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using WebApi.Contracts;
 using WebApi.Models;
 
 namespace WebApi.Controllers
@@ -13,20 +14,20 @@ namespace WebApi.Controllers
     [ApiController]
     public class ProductController : ControllerBase
     {
-        public DataContext Context { get; set; }
-        public ProductController(DataContext context)
+        public IProductRepository Repository { get; set; }
+        public ProductController(IProductRepository repository)
         {
-            Context = context;
+            Repository = repository;
         }
         [HttpGet]
         public async Task<IEnumerable<Product>> GetAllProducts()
         {
-            return await Context.Products.Include(p => p.Category).ToListAsync();
+            return await Repository.GetAll();
         }
         [HttpGet("{id}")]
         public async Task<ActionResult<Product>> GetProduct(int id)
         {
-            var product = await Context.Products.Include(p => p.Category).SingleOrDefaultAsync(p => p.Id == id);
+            var product = await Repository.GetById(id);
             if(product == null)
             {
                 return NotFound();
@@ -36,7 +37,7 @@ namespace WebApi.Controllers
         [HttpGet("category/{id}")]
         public async Task<ActionResult<List<Product>>> GetProductsByCategory(int id)
         {
-            var products = await Context.Products.Where(p => p.CategoryId == id).ToListAsync();
+            var products = await Repository.GetByCategory(id);
             if(products == null || products.Count == 0)
             {
                 return NotFound();
@@ -55,8 +56,7 @@ namespace WebApi.Controllers
 
             var entities = mapped.Map<List<Product>>(products);
 
-            await Context.Products.AddRangeAsync(entities);
-            await Context.SaveChangesAsync();
+            await Repository.AddRange(entities);
 
             return Ok();
         }
@@ -72,15 +72,14 @@ namespace WebApi.Controllers
 
             var entity = mapped.Map<Product>(product);
 
-            await Context.Products.AddAsync(entity);
-            await Context.SaveChangesAsync();
+            await Repository.Add(entity);
 
             return Ok();
         }
         [HttpPut]
         public async Task<IActionResult> Edit(ViewModels.Product product)
         {
-            var entity = await Context.Products.SingleOrDefaultAsync(p => p.Id == product.Id);
+            var entity = await Repository.GetById(product.Id);
 
             if(entity == null)
             {
@@ -94,15 +93,14 @@ namespace WebApi.Controllers
                 .ForMember("Slug", opt => opt.MapFrom(src => src.Name.GenerateSlug("-")))
             )).Map(product, entity);
 
-            Context.Update(entity);
-            await Context.SaveChangesAsync();
+            await Repository.Edit(entity);
 
             return Ok();
         }
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var product = await Context.Products.SingleOrDefaultAsync(p => p.Id == id);
+            var product = await Repository.GetById(id);
 
             if (product == null)
             {
@@ -112,8 +110,7 @@ namespace WebApi.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            Context.Remove(product);
-            await Context.SaveChangesAsync();
+            await Repository.Delete(product);
 
             return Ok();
         }

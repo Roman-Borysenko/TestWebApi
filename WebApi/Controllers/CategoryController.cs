@@ -4,6 +4,7 @@ using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SlugGenerator;
+using WebApi.Contracts;
 using WebApi.Models;
 
 namespace WebApi.Controllers
@@ -12,20 +13,20 @@ namespace WebApi.Controllers
     [ApiController]
     public class CategoryController : ControllerBase
     {
-        public DataContext Context;
-        public CategoryController(DataContext context)
+        public ICategoryRepository Repository;
+        public CategoryController(ICategoryRepository repository)
         {
-            Context = context;
+            Repository = repository;
         }
         [HttpGet]
         public async Task<IEnumerable<Category>> GetAll()
         {
-            return await Context.Categories.ToListAsync();
+            return await Repository.GetAll();
         }
         [HttpGet("{id}")]
         public async Task<IActionResult> GetOne(int id)
         {
-            var category = await Context.Categories.SingleOrDefaultAsync(c => c.Id == id);
+            var category = await Repository.GetById(id);
             if(category == null)
             {
                 return NotFound();
@@ -44,8 +45,7 @@ namespace WebApi.Controllers
             ));
             var entities = mapped.Map<List<Category>>(categories);
 
-            await Context.Categories.AddRangeAsync(entities);
-            await Context.SaveChangesAsync();
+            await Repository.AddRange(entities);
 
             return Ok();
         }
@@ -61,15 +61,14 @@ namespace WebApi.Controllers
             ));
             var entity = mapped.Map<Category>(category);
 
-            await Context.Categories.AddAsync(entity);
-            await Context.SaveChangesAsync();
+            await Repository.Add(entity);
 
             return Ok();
         }
         [HttpPut]
         public async Task<IActionResult> Edit(ViewModels.Category category)
         {
-            var entity = await Context.Categories.SingleOrDefaultAsync(c => c.Id == category.Id);
+            var entity = await Repository.GetById(category.Id);
 
             if(entity == null)
             {
@@ -85,15 +84,14 @@ namespace WebApi.Controllers
                 .ForMember("Slug", opt => opt.MapFrom(src => src.Name.GenerateSlug("-")))
             )).Map<ViewModels.Category, Category>(category, entity);
 
-            Context.Update(entity);
-            await Context.SaveChangesAsync();
+            await Repository.Edit(entity);
 
             return Ok();
         }
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var category = await Context.Categories.SingleOrDefaultAsync(c => c.Id == id);
+            var category = await Repository.GetById(id);
             if (category == null)
             {
                 ModelState.AddModelError("Id", "The record id is missing or was entered incorrectly.");
@@ -103,8 +101,7 @@ namespace WebApi.Controllers
             {
                 return BadRequest(ModelState);
             }
-            Context.Categories.Remove(category);
-            await Context.SaveChangesAsync();
+            await Repository.Delete(category);
 
             return Ok();
         }

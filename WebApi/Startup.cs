@@ -11,7 +11,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using WebApi.Contracts;
 using WebApi.Models;
+using WebApi.Repositories;
 
 namespace WebApi
 {
@@ -32,6 +34,8 @@ namespace WebApi
             );
             services.AddDbContext<DataContext>(option => option.UseSqlServer(Configuration["ConnectionString"]));
             services.AddScoped<DataContext>();
+            services.AddScoped<IProductRepository, ProductRepository>();
+            services.AddScoped<ICategoryRepository, CategoryRepository>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
