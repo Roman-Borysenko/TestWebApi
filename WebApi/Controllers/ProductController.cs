@@ -25,7 +25,7 @@ namespace WebApi.Controllers
             return await Repository.GetAll();
         }
         [HttpGet("{id}")]
-        public async Task<ActionResult<Product>> GetProduct(int id)
+        public async Task<IActionResult> GetProduct(int id)
         {
             var product = await Repository.GetById(id);
             if(product == null)
@@ -35,7 +35,7 @@ namespace WebApi.Controllers
             return Ok(product);
         }
         [HttpGet("category/{id}")]
-        public async Task<ActionResult<List<Product>>> GetProductsByCategory(int id)
+        public async Task<IActionResult> GetProductsByCategory(int id)
         {
             var products = await Repository.GetByCategory(id);
             if(products == null || products.Count == 0)
